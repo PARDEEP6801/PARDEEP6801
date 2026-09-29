@@ -1,0 +1,6 @@
+.env
+my_llms.json
+*.tmp
+__pycache__/
+node_modules/
+my_models.json

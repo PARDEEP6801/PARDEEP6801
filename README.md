@@ -1,10 +1,26 @@
-- 👋 Hi, I’m @PARDEEP6801
-- 👀 I’m interested in ...
-- 🌱 I’m currently learning ...
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
+<h1 align="center">👋 Hi, I'm Pardeep</h1>
+<p align="center">
+  <img src="https://komarev.com/ghpvc/?username=PARDEEP6801&color=blueviolet" alt="Profile views" />
+  <a href="https://github.com/PARDEEP6801?tab=followers"><img src="https://img.shields.io/github/followers/PARDEEP6801?style=social" alt="Followers" /></a>
+</p>
 
-<!---
-PARDEEP6801/PARDEEP6801 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+<!-- START:QUOTE -->
+<!-- END:QUOTE -->
+
+## 📊 GitHub Stats
+<!-- START:STATS -->
+<!-- END:STATS -->
+
+## 🚀 Recently Active Projects
+<!-- START:REPOS -->
+<!-- END:REPOS -->
+
+## ⚡ Recent Activity
+<!-- START:ACTIVITY -->
+<!-- END:ACTIVITY -->
+
+---
+<p align="center">
+<!-- START:UPDATED -->
+<!-- END:UPDATED -->
+</p>

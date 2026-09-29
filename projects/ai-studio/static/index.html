@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Studio</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --border: #2a2f3a;
+    --text: #e6e8ee; --muted: #8b93a7; --accent: #76b900; --accent2: #5a8f00;
+    --danger: #e5484d; --user: #243049; --code: #0b0d11;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel2); border-radius: 8px; padding: 7px 12px; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #0b0d11; font-weight: 600; }
+  button.primary:hover { background: var(--accent2); }
+  button.danger { color: var(--danger); }
+  input, select, textarea { width: 100%; background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  textarea { resize: vertical; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+
+  aside { width: 290px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .brand { padding: 16px; font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border); }
+  .brand span { color: var(--accent); }
+  .section { padding: 12px 16px; }
+  .section h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  #llmList { flex: 1; overflow-y: auto; padding: 0 8px; }
+  .llm { padding: 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .llm:hover { background: var(--panel2); }
+  .llm.active { background: var(--panel2); outline: 1px solid var(--accent); }
+  .llm small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+  .llm .edit { padding: 2px 8px; font-size: 12px; visibility: hidden; }
+  .llm:hover .edit { visibility: visible; }
+  .nv { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); }
+  .nv button, .nv .btn { text-align: left; }
+  a.btn { display: block; color: inherit; text-decoration: none; border: 1px solid var(--border); background: var(--panel2); border-radius: 8px; padding: 7px 12px; }
+  a.btn:hover { border-color: var(--accent); }
+  .status { font-size: 12px; padding: 12px 16px; border-top: 1px solid var(--border); color: var(--muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  header { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  header .title { flex: 1; min-width: 0; }
+  header .title b { display: block; }
+  header .title small { color: var(--muted); }
+  #quick { display: flex; gap: 8px; flex: 2; }
+  #quick select { flex: 0 0 130px; }
+  #quick #qModel { flex: 1; min-width: 0; }
+  #chat { flex: 1; overflow-y: auto; padding: 24px 20px; }
+  .msg { max-width: 860px; margin: 0 auto 18px; display: flex; gap: 12px; }
+  .avatar { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: 14px; font-weight: 700; background: var(--panel2); }
+  .msg.user .avatar { background: var(--user); }
+  .msg.assistant .avatar { background: var(--accent); color: #0b0d11; }
+  .bubble { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .bubble p { margin: 0 0 10px; }
+  .bubble pre { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; position: relative; }
+  .bubble code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .bubble :not(pre) > code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+  .copy { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 2px 8px; }
+  details.think { color: var(--muted); font-size: 13px; margin-bottom: 8px; border-left: 2px solid var(--border); padding-left: 10px; white-space: pre-wrap; }
+  .err { color: var(--danger); }
+  .meta { color: var(--muted); font-size: 12px; }
+  .empty { max-width: 560px; margin: 12vh auto; text-align: center; color: var(--muted); }
+  .empty h2 { color: var(--text); }
+
+  footer { padding: 12px 20px 18px; border-top: 1px solid var(--border); }
+  .composer { max-width: 860px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  .composer textarea { min-height: 46px; max-height: 220px; resize: none; }
+
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 12px; width: min(620px, 94vw); padding: 20px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin: 0 0 4px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .actions .spacer { flex: 1; }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    body { flex-direction: column; }
+    aside { width: 100%; max-height: 40vh; }
+    #quick { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">AI <span>Studio</span></div>
+  <div class="section">
+    <button class="primary" style="width:100%" onclick="openEditor()">+ Nayi LLM banao</button>
+  </div>
+  <div class="section" style="padding-bottom:4px"><h3>Meri LLMs</h3></div>
+  <div id="llmList"></div>
+  <div class="section">
+    <div class="llm" id="quickItem" onclick="selectQuick()"><div><b>⚡ Quick chat</b><small>Koi bhi model seedha use karo</small></div></div>
+  </div>
+  <div class="section nv">
+    <h3>NVIDIA</h3>
+    <a class="btn" href="https://build.nvidia.com/models" target="_blank" rel="noopener">🌐 NVIDIA website kholo</a>
+    <button onclick="openKey()">🔑 API key daalo</button>
+    <button onclick="openAddModel()">+ Model add karo</button>
+  </div>
+  <div class="status" id="status">Checking keys…</div>
+</aside>
+
+<main>
+  <header>
+    <div class="title"><b id="curName">Quick chat</b><small id="curModel"></small></div>
+    <div id="quick">
+      <select id="qProvider" onchange="loadModels(this.value, 'qModel')"></select>
+      <select id="qModel"></select>
+      <button onclick="openAddModel()" title="NVIDIA site se model ID paste karo">+ Model</button>
+    </div>
+    <button onclick="clearChat()" title="Clear this conversation">🗑 Clear</button>
+  </header>
+  <div id="chat"></div>
+  <footer>
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="Message likho… (Enter = send, Shift+Enter = new line)"></textarea>
+      <button class="primary" id="sendBtn" onclick="send()">Send</button>
+    </div>
+  </footer>
+</main>
+
+<dialog id="keyDialog">
+  <h2>🔑 API key daalo</h2>
+  <div class="hint">
+    1. <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" style="color:var(--accent)">build.nvidia.com</a> pe login karo<br>
+    2. Koi bhi model kholo, phir <b>Get API Key</b> pe click karo, phir <b>Generate Key</b><br>
+    3. Key (<code>nvapi-...</code>) copy karke neeche paste karo. Ye sirf aapke computer ki <code>.env</code> file mein save hogi.
+  </div>
+  <label>Provider</label>
+  <select id="keyProvider"></select>
+  <label>API key</label>
+  <input id="keyValue" type="password" placeholder="nvapi-..." autocomplete="off">
+  <div class="actions">
+    <button onclick="keyDialog.close()">Cancel</button>
+    <button class="primary" onclick="saveKey()">Save</button>
+  </div>
+</dialog>
+
+<dialog id="modelDialog">
+  <h2>+ Model add karo</h2>
+  <div class="hint">
+    1. <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" style="color:var(--accent)">NVIDIA models page</a> kholo aur jo free model pasand aaye use kholo<br>
+    2. Uske code mein <code>model="..."</code> ke andar jo naam hai, use copy karo<br>
+    &nbsp;&nbsp;&nbsp;(jaise <code>deepseek-ai/deepseek-v4.1-flash</code>)<br>
+    3. Neeche paste karo, phir Add dabao. Model chat ke "⭐ Mere models" mein aa jayega.
+  </div>
+  <label>Provider</label>
+  <select id="addProvider" onchange="renderMyModels()"></select>
+  <label>Model ID</label>
+  <input id="addModelId" placeholder="deepseek-ai/deepseek-v4.1-flash" autocomplete="off">
+  <label>Mere models</label>
+  <div id="myModelList" class="hint"></div>
+  <div class="actions">
+    <button onclick="modelDialog.close()">Band karo</button>
+    <button class="primary" onclick="saveModel()">Add</button>
+  </div>
+</dialog>
+
+<dialog id="editor">
+  <h2 id="edTitle">Nayi LLM banao</h2>
+  <div class="hint">Base model chuno, uski personality/instructions (system prompt) likho aur save karo — ye aapki apni custom LLM ban jayegi.</div>
+  <input type="hidden" id="edId">
+  <label>Naam</label>
+  <input id="edName" placeholder="e.g. Mera Coding Assistant" maxlength="60">
+  <div class="row">
+    <div><label>Provider</label><select id="edProvider" onchange="loadModels(this.value, 'edModel')"></select></div>
+    <div><label>Base model</label><select id="edModel"></select></div>
+  </div>
+  <label>System prompt (personality + rules)</label>
+  <textarea id="edSystem" rows="7" placeholder="Tum ek expert ... ho. Hamesha ... karo. Kabhi ... mat karo."></textarea>
+  <div class="row">
+    <div><label>Creativity (temperature): <b id="edTempVal">0.7</b></label>
+      <input type="range" id="edTemp" min="0" max="1.5" step="0.05" value="0.7" oninput="edTempVal.textContent=this.value"></div>
+    <div><label>Max answer length (tokens)</label><input type="number" id="edMax" min="16" max="32768" value="2048"></div>
+  </div>
+  <div class="actions">
+    <button class="danger" id="edDelete" onclick="deleteLlm()">Delete</button>
+    <span class="spacer"></span>
+    <button onclick="editor.close()">Cancel</button>
+    <button class="primary" onclick="saveLlm()">Save</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let status = {}, llms = [], current = null, controller = null;
+const modelCache = {};
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+// ---------- providers & models ----------
+async function loadStatus() {
+  status = await api('/api/status');
+  const opts = Object.entries(status).map(([k, s]) => `<option value="${k}">${s.label}</option>`).join('');
+  for (const id of ['qProvider', 'edProvider', 'keyProvider', 'addProvider']) {
+    const sel = $(id), prev = sel.value;
+    sel.innerHTML = opts;
+    if (prev) sel.value = prev;
+  }
+  $('status').innerHTML = Object.entries(status).map(([k, s]) =>
+    `<div><span class="dot" style="background:${s.has_key ? 'var(--accent)' : 'var(--danger)'}"></span>${s.label}: ${
+      s.has_key ? 'key ready' : `no key — <a href="#" onclick="openKey('${k}'); return false" style="color:var(--accent)">key daalo</a>`}</div>`).join('');
+}
+
+function openKey(provider = 'nvidia') {
+  $('keyProvider').value = provider; $('keyValue').value = '';
+  keyDialog.showModal(); $('keyValue').focus();
+}
+
+async function saveKey() {
+  const provider = $('keyProvider').value;
+  try {
+    await api('/api/key', { method: 'POST', body: JSON.stringify({ provider, key: $('keyValue').value }) });
+    keyDialog.close();
+    delete modelCache[provider];
+    await loadStatus();
+    if ($('qProvider').value === provider) loadModels(provider, 'qModel', $('qModel').value);
+  } catch (e) { alert(e.message); }
+}
+
+async function openAddModel() {
+  $('addProvider').value = current ? current.provider : $('qProvider').value;
+  $('addModelId').value = '';
+  modelDialog.showModal(); $('addModelId').focus();
+  renderMyModels();
+}
+
+async function renderMyModels() {
+  const provider = $('addProvider').value;
+  let list = [];
+  try { list = (await api(`/api/models?provider=${provider}`)).models.filter(m => m.mine); } catch {}
+  $('myModelList').innerHTML = list.length
+    ? list.map(m => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0">
+        <code>${esc(m.id)}</code><button class="danger" style="padding:2px 8px" onclick="removeModel('${esc(m.id)}')">Hatao</button></div>`).join('')
+    : 'Abhi koi model add nahi kiya.';
+}
+
+async function changeMyModel(provider, id, remove) {
+  await api('/api/mymodels', { method: 'POST', body: JSON.stringify({ provider, id, remove }) });
+  delete modelCache[provider];
+  if ($('qProvider').value === provider) await loadModels(provider, 'qModel', remove ? undefined : id);
+  renderMyModels();
+}
+
+async function saveModel() {
+  const id = $('addModelId').value.trim().replace(/^model\s*=\s*/, '').replace(/^["']|["'],?$/g, '');
+  if (!id) return;
+  try {
+    if (!current) $('qProvider').value = $('addProvider').value;
+    await changeMyModel($('addProvider').value, id, false);
+    $('addModelId').value = '';
+  } catch (e) { alert(e.message); }
+}
+
+async function removeModel(id) {
+  try { await changeMyModel($('addProvider').value, id, true); } catch (e) { alert(e.message); }
+}
+
+async function loadModels(provider, selectId, selected) {
+  const sel = $(selectId);
+  sel.innerHTML = '<option>Loading…</option>';
+  try {
+    if (!modelCache[provider]) modelCache[provider] = (await api(`/api/models?provider=${provider}`)).models;
+    const list = modelCache[provider];
+    const mine = list.filter(m => m.mine), fav = list.filter(m => m.favorite && !m.mine), rest = list.filter(m => !m.favorite && !m.mine);
+    const opt = m => `<option value="${esc(m.id)}">${esc(m.id)}</option>`;
+    const group = (label, items) => items.length ? `<optgroup label="${label}">${items.map(opt).join('')}</optgroup>` : '';
+    sel.innerHTML = group('⭐ Mere models', mine) + group('🔥 Popular', fav) + group(`All models (${rest.length})`, rest)
+      || '<option value="">(koi model nahi, "+ Model" se add karo)</option>';
+    if (selected && !list.some(m => m.id === selected)) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(selected)}">${esc(selected)}</option>`);
+    if (selected) sel.value = selected;
+  } catch (e) {
+    sel.innerHTML = selected ? `<option value="${esc(selected)}">${esc(selected)}</option>` : '<option value="">(models unavailable)</option>';
+    if (selectId === 'qModel') $('curModel').textContent = e.message;
+  }
+  if (selectId === 'qModel') { store.set('quick', { provider, model: sel.value }); updateHeader(); }
+}
+
+// ---------- my LLMs ----------
+async function loadLlms() {
+  llms = (await api('/api/llms')).llms;
+  $('llmList').innerHTML = llms.map(l => `
+    <div class="llm ${current?.id === l.id ? 'active' : ''}" onclick="selectLlm('${l.id}')">
+      <div><b>${esc(l.name)}</b><small>${esc(l.model)}</small></div>
+      <button class="edit" onclick="event.stopPropagation(); openEditor('${l.id}')">Edit</button>
+    </div>`).join('') || '<div class="hint" style="padding:0 10px">Abhi koi LLM nahi — upar button se banao.</div>';
+  $('quickItem').classList.toggle('active', !current);
+}
+
+function selectLlm(id) {
+  current = llms.find(l => l.id === id) || null;
+  $('quick').style.display = current ? 'none' : 'flex';
+  store.set('selected', id);
+  loadLlms(); updateHeader(); renderChat();
+}
+function selectQuick() { current = null; store.set('selected', null); $('quick').style.display = 'flex'; loadLlms(); updateHeader(); renderChat(); }
+
+function updateHeader() {
+  $('curName').textContent = current ? current.name : '⚡ Quick chat';
+  $('curModel').textContent = current ? `${status[current.provider]?.label || current.provider} · ${current.model}` : '';
+}
+
+async function openEditor(id) {
+  const l = llms.find(x => x.id === id) || { name: '', provider: 'nvidia', model: '', system: '', temperature: 0.7, max_tokens: 2048 };
+  $('edTitle').textContent = id ? 'LLM edit karo' : 'Nayi LLM banao';
+  $('edId').value = id || ''; $('edName').value = l.name; $('edSystem').value = l.system;
+  $('edTemp').value = l.temperature; $('edTempVal').textContent = l.temperature; $('edMax').value = l.max_tokens;
+  $('edProvider').value = l.provider; $('edDelete').style.display = id ? '' : 'none';
+  editor.showModal();
+  await loadModels(l.provider, 'edModel', l.model);
+}
+
+async function saveLlm() {
+  try {
+    const saved = await api('/api/llms', { method: 'POST', body: JSON.stringify({
+      id: $('edId').value, name: $('edName').value, provider: $('edProvider').value, model: $('edModel').value,
+      system: $('edSystem').value, temperature: +$('edTemp').value, max_tokens: +$('edMax').value }) });
+    editor.close(); await loadLlms(); selectLlm(saved.id);
+  } catch (e) { alert(e.message); }
+}
+
+async function deleteLlm() {
+  const id = $('edId').value;
+  if (!id || !confirm('Is LLM ko delete karna hai?')) return;
+  await api('/api/llms/' + id, { method: 'DELETE' });
+  delete chats['chat:' + id]; store.set('chat:' + id, null);
+  editor.close(); if (current?.id === id) current = null;
+  await loadLlms(); selectQuick();
+}
+
+// ---------- chat ----------
+const chatKey = () => 'chat:' + (current ? current.id : 'quick');
+const chats = {};  // in memory; localStorage is only a backup
+const history = (key = chatKey()) => (chats[key] ??= store.get(key, []));
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function md(text) {
+  const parts = text.split(/```(\w*)\n?([\s\S]*?)(?:```|$)/g);
+  let html = '';
+  for (let i = 0; i < parts.length; i += 3) {
+    html += esc(parts[i])
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/^#{1,6} (.+)$/gm, '<b>$1</b>')
+      .split(/\n{2,}/).map(p => p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '').join('');
+    if (i + 2 < parts.length) html += `<pre><button class="copy" onclick="copyCode(this)">Copy</button><code>${esc(parts[i + 2])}</code></pre>`;
+  }
+  return html;
+}
+function copyCode(btn) { navigator.clipboard.writeText(btn.nextElementSibling.textContent); btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy', 1200); }
+
+function msgHtml(m) {
+  const think = m.reasoning ? `<details class="think"><summary>🧠 Thinking</summary>${esc(m.reasoning)}</details>` : '';
+  const body = m.role === 'user' ? `<p>${esc(m.content).replace(/\n/g, '<br>')}</p>` : md(m.content || '');
+  const err = m.error ? `<p class="err">⚠ ${esc(m.error)}</p>` : '';
+  return `<div class="msg ${m.role}"><div class="avatar">${m.role === 'user' ? 'U' : 'AI'}</div><div class="bubble">${think}${body}${err}</div></div>`;
+}
+
+function renderChat() {
+  const h = history();
+  $('chat').innerHTML = h.length ? h.map(msgHtml).join('') : `<div class="empty"><h2>${current ? esc(current.name) : 'Quick chat'}</h2>
+    <p>${current ? esc(current.system || 'No system prompt') : 'Upar se provider aur model chuno, aur baat shuru karo.'}</p></div>`;
+  $('chat').scrollTop = $('chat').scrollHeight;
+}
+
+function clearChat() { chats[chatKey()] = []; store.set(chatKey(), []); renderChat(); }
+
+async function send() {
+  if (controller) { controller.abort(); return; }
+  const text = $('input').value.trim();
+  if (!text) return;
+  const cfg = current || { provider: $('qProvider').value, model: $('qModel').value, system: '', temperature: 0.7, max_tokens: 2048 };
+  if (!cfg.model) return alert('Pehle model chuno (API key check karo).');
+  const key = chatKey();
+  const h = history(key);
+  h.push({ role: 'user', content: text });
+  const reply = { role: 'assistant', content: '', reasoning: '' };
+  h.push(reply);
+  store.set(key, h);
+  $('input').value = ''; autosize();
+  renderChat();
+  $('chat').lastElementChild.querySelector('.bubble').innerHTML = '<p class="meta">…</p>';
+
+  controller = new AbortController();
+  $('sendBtn').textContent = 'Stop';
+  try {
+    const r = await fetch('/api/chat', { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: cfg.provider, model: cfg.model, system: cfg.system, temperature: cfg.temperature,
+        max_tokens: cfg.max_tokens, messages: h.slice(0, -1).map(({ role, content }) => ({ role, content })) }) });
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === 'text') reply.content += ev.v;
+        else if (ev.type === 'reasoning') reply.reasoning += ev.v;
+        else if (ev.type === 'error') reply.error = ev.v;
+      }
+      $('chat').lastElementChild.outerHTML = msgHtml(reply);
+      $('chat').scrollTop = $('chat').scrollHeight;
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') reply.error = e.message;
+  } finally {
+    controller = null; $('sendBtn').textContent = 'Send';
+    if (!reply.content && !reply.error) reply.error = 'Empty response';
+    store.set(key, h);
+    if (key === chatKey()) renderChat();
+  }
+}
+
+function autosize() { const t = $('input'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 220) + 'px'; }
+$('input').addEventListener('input', autosize);
+$('input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+$('qModel').addEventListener('change', () => store.set('quick', { provider: $('qProvider').value, model: $('qModel').value }));
+
+(async function init() {
+  await loadStatus();
+  await loadLlms();
+  const q = store.get('quick', { provider: 'nvidia', model: '' });
+  $('qProvider').value = q.provider;
+  const sel = store.get('selected', null);
+  if (sel && llms.some(l => l.id === sel)) selectLlm(sel); else selectQuick();
+  loadModels(q.provider, 'qModel', q.model);
+})();
+</script>
+</body>
+</html>
