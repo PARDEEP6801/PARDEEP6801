@@ -1,0 +1,7 @@
+# AI Studio sirf Python ki built-in (standard) library use karta hai.
+# Koi extra package install nahi karna — bas Python 3.8+ chahiye.
+# (`pip install -r requirements.txt` chalaoge toh bhi kuch nahi hoga, safe hai.)
+#
+# Zaroori software:
+#   - Python 3.8+   https://www.python.org/downloads/
+#   - Node.js 16+   https://nodejs.org   (sirf `npm run dev` ke liye)

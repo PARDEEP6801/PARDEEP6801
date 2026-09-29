@@ -1,0 +1,13 @@
+{
+  "name": "ai-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local web app to chat with NVIDIA / OpenRouter models and build your own custom LLMs",
+  "scripts": {
+    "dev": "node dev.js",
+    "start": "node dev.js --no-browser"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

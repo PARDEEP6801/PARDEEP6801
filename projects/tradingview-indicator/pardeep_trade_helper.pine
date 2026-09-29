@@ -1,0 +1,164 @@
+//@version=6
+// Pardeep Trade Helper — trend + momentum confluence indicator.
+// Gives BUY / SELL signals only when trend, Supertrend, RSI and ADX agree,
+// draws SL / TP levels from ATR, marks support / resistance, and shows a
+// dashboard with the current market bias.
+// Educational tool, not financial advice. Always backtest and manage risk.
+indicator("Pardeep Trade Helper", shorttitle = "PTH", overlay = true, max_labels_count = 500, max_lines_count = 500)
+
+// ───────────── Inputs ─────────────
+grpT           = "Trend"
+fastLen        = input.int(9, "Fast EMA", minval = 1, group = grpT)
+slowLen        = input.int(21, "Slow EMA", minval = 1, group = grpT)
+trendLen       = input.int(200, "Trend EMA", minval = 1, group = grpT)
+useTrendFilter = input.bool(true, "Only trade in direction of Trend EMA", group = grpT)
+
+grpS        = "Supertrend"
+stAtrLen    = input.int(10, "ATR length", minval = 1, group = grpS)
+stFactor    = input.float(3.0, "Factor", minval = 0.1, step = 0.1, group = grpS)
+useStFilter = input.bool(true, "Require Supertrend agreement", group = grpS)
+
+grpR         = "RSI / ADX"
+rsiLen       = input.int(14, "RSI length", minval = 1, group = grpR)
+rsiOB        = input.int(70, "RSI overbought (no BUY above)", group = grpR)
+rsiOS        = input.int(30, "RSI oversold (no SELL below)", group = grpR)
+adxLen       = input.int(14, "ADX length", minval = 1, group = grpR)
+adxMin       = input.int(20, "Min ADX (trend strength)", group = grpR)
+useAdxFilter = input.bool(true, "Require ADX above minimum", group = grpR)
+
+grpRisk    = "Stop loss / Targets"
+showLevels = input.bool(true, "Show SL / TP levels on signal", group = grpRisk)
+slAtrMult  = input.float(1.5, "Stop loss = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
+tp1R       = input.float(1.5, "Target 1 (risk multiple)", minval = 0.1, step = 0.1, group = grpRisk)
+tp2R       = input.float(3.0, "Target 2 (risk multiple)", minval = 0.1, step = 0.1, group = grpRisk)
+
+grpV      = "Display"
+showEmas  = input.bool(true, "Show EMAs", group = grpV)
+showSt    = input.bool(true, "Show Supertrend line", group = grpV)
+showBg    = input.bool(true, "Colour background by trend", group = grpV)
+showSR    = input.bool(true, "Show support / resistance", group = grpV)
+pivotLen  = input.int(10, "S/R pivot strength", minval = 2, group = grpV)
+showTable = input.bool(true, "Show dashboard", group = grpV)
+tablePos  = input.string("Top Right", "Dashboard position", options = ["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group = grpV)
+
+// ───────────── Calculations ─────────────
+emaFast  = ta.ema(close, fastLen)
+emaSlow  = ta.ema(close, slowLen)
+emaTrend = ta.ema(close, trendLen)
+
+[stLine, stDir] = ta.supertrend(stFactor, stAtrLen)
+stBull = stDir < 0
+
+rsi                    = ta.rsi(close, rsiLen)
+[diPlus, diMinus, adx] = ta.dmi(adxLen, adxLen)
+atr                    = ta.atr(14)
+
+upTrend   = close > emaTrend
+downTrend = close < emaTrend
+strongAdx = adx >= adxMin
+
+bullOk = emaFast > emaSlow and (not useTrendFilter or upTrend) and (not useStFilter or stBull) and rsi < rsiOB and (not useAdxFilter or strongAdx)
+bearOk = emaFast < emaSlow and (not useTrendFilter or downTrend) and (not useStFilter or not stBull) and rsi > rsiOS and (not useAdxFilter or strongAdx)
+
+// Signal only on the first confirmed bar where everything lines up,
+// and never twice in a row in the same direction (no repainting).
+var int lastSig = 0
+buySignal  = barstate.isconfirmed and bullOk and lastSig != 1
+sellSignal = barstate.isconfirmed and bearOk and lastSig != -1
+if buySignal
+    lastSig := 1
+if sellSignal
+    lastSig := -1
+
+// Bias score: -5 (strong sell) .. +5 (strong buy)
+score = (upTrend ? 1 : -1) + (stBull ? 1 : -1) + (emaFast > emaSlow ? 1 : -1) + (rsi > 50 ? 1 : -1) + (diPlus > diMinus ? 1 : -1)
+biasText = score >= 4 ? "STRONG BUY" : score >= 2 ? "BUY" : score <= -4 ? "STRONG SELL" : score <= -2 ? "SELL" : "NEUTRAL"
+biasCol  = score >= 2 ? color.new(color.green, 20) : score <= -2 ? color.new(color.red, 20) : color.new(color.gray, 20)
+
+// ───────────── Plots ─────────────
+plot(showEmas ? emaFast : na, "Fast EMA", color.new(color.aqua, 0), 1)
+plot(showEmas ? emaSlow : na, "Slow EMA", color.new(color.orange, 0), 1)
+plot(showEmas ? emaTrend : na, "Trend EMA", color.new(color.purple, 0), 2)
+plot(showSt ? stLine : na, "Supertrend", stBull ? color.new(color.green, 0) : color.new(color.red, 0), 2, plot.style_linebr)
+
+bgcolor(showBg ? (upTrend and stBull ? color.new(color.green, 93) : downTrend and not stBull ? color.new(color.red, 93) : na) : na)
+
+plotshape(buySignal, "BUY", shape.labelup, location.belowbar, color.new(color.green, 0), text = "BUY", textcolor = color.white, size = size.small)
+plotshape(sellSignal, "SELL", shape.labeldown, location.abovebar, color.new(color.red, 0), text = "SELL", textcolor = color.white, size = size.small)
+
+// ───────────── Stop loss / targets ─────────────
+var array<line>  lvlLines  = array.new<line>()
+var array<label> lvlLabels = array.new<label>()
+
+f_level(price, col, txt) =>
+    lvlLines.push(line.new(bar_index, price, bar_index + 15, price, color = col, style = line.style_dashed, width = 1))
+    lvlLabels.push(label.new(bar_index + 15, price, txt + " " + str.tostring(price, format.mintick), style = label.style_label_left, color = col, textcolor = color.white, size = size.small))
+
+if showLevels and (buySignal or sellSignal)
+    // keep only the latest set of levels on the chart
+    for l in lvlLines
+        line.delete(l)
+    for lb in lvlLabels
+        label.delete(lb)
+    lvlLines.clear()
+    lvlLabels.clear()
+
+    dir   = buySignal ? 1 : -1
+    entry = close
+    risk  = atr * slAtrMult
+    f_level(entry, color.new(color.blue, 0), "Entry")
+    f_level(entry - dir * risk, color.new(color.red, 0), "SL")
+    f_level(entry + dir * risk * tp1R, color.new(color.green, 0), "TP1")
+    f_level(entry + dir * risk * tp2R, color.new(color.teal, 0), "TP2")
+
+// ───────────── Support / resistance ─────────────
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+var line resLine = na
+var line supLine = na
+if showSR and not na(ph)
+    line.delete(resLine)
+    resLine := line.new(bar_index - pivotLen, ph, bar_index, ph, extend = extend.right, color = color.new(color.red, 40), width = 2)
+if showSR and not na(pl)
+    line.delete(supLine)
+    supLine := line.new(bar_index - pivotLen, pl, bar_index, pl, extend = extend.right, color = color.new(color.green, 40), width = 2)
+
+// ───────────── Dashboard ─────────────
+pos = switch tablePos
+    "Top Left"     => position.top_left
+    "Bottom Right" => position.bottom_right
+    "Bottom Left"  => position.bottom_left
+    => position.top_right
+
+var table dash = table.new(pos, 2, 8, bgcolor = color.new(color.black, 25), border_color = color.new(color.gray, 60), border_width = 1)
+
+f_row(r, name, val, col) =>
+    dash.cell(0, r, name, text_color = color.white, text_size = size.small, text_halign = text.align_left)
+    dash.cell(1, r, val, text_color = color.white, bgcolor = col, text_size = size.small)
+
+if showTable and barstate.islast
+    green = color.new(color.green, 40)
+    red   = color.new(color.red, 40)
+    gray  = color.new(color.gray, 40)
+    dash.cell(0, 0, "Pardeep Trade Helper", text_color = color.yellow, text_size = size.small)
+    dash.merge_cells(0, 0, 1, 0)
+    f_row(1, "Trend (EMA " + str.tostring(trendLen) + ")", upTrend ? "UP" : "DOWN", upTrend ? green : red)
+    f_row(2, "Supertrend", stBull ? "BULLISH" : "BEARISH", stBull ? green : red)
+    f_row(3, "EMA " + str.tostring(fastLen) + "/" + str.tostring(slowLen), emaFast > emaSlow ? "BULLISH" : "BEARISH", emaFast > emaSlow ? green : red)
+    f_row(4, "RSI", str.tostring(rsi, "#.0"), rsi >= rsiOB ? red : rsi <= rsiOS ? green : gray)
+    f_row(5, "ADX (strength)", str.tostring(adx, "#.0") + (strongAdx ? " strong" : " weak"), strongAdx ? green : gray)
+    f_row(6, "Last signal", lastSig == 1 ? "BUY" : lastSig == -1 ? "SELL" : "-", lastSig == 1 ? green : lastSig == -1 ? red : gray)
+    f_row(7, "Bias (" + str.tostring(score) + "/5)", biasText, biasCol)
+
+// ───────────── Alerts ─────────────
+alertcondition(buySignal, "PTH BUY", "PTH BUY on {{ticker}} ({{interval}}) at {{close}}")
+alertcondition(sellSignal, "PTH SELL", "PTH SELL on {{ticker}} ({{interval}}) at {{close}}")
+
+if buySignal or sellSignal
+    d    = buySignal ? 1 : -1
+    risk = atr * slAtrMult
+    msg  = (buySignal ? "BUY " : "SELL ") + syminfo.ticker + " @ " + str.tostring(close, format.mintick) +
+         " | SL " + str.tostring(close - d * risk, format.mintick) +
+         " | TP1 " + str.tostring(close + d * risk * tp1R, format.mintick) +
+         " | TP2 " + str.tostring(close + d * risk * tp2R, format.mintick)
+    alert(msg, alert.freq_once_per_bar_close)
