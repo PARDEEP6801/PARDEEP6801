@@ -64,6 +64,27 @@ def load_env(path=ROOT / ".env"):
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+def set_key(provider, key, path=ROOT / ".env"):
+    """Save an API key to .env (replacing any old value) and use it right away."""
+    if provider not in PROVIDERS:
+        raise ProviderError(f"Unknown provider: {provider}")
+    key = key.strip()
+    if not key or any(c.isspace() for c in key) or len(key) > 500:
+        raise ProviderError("Key sahi nahi lag rahi. Poori key bina space ke paste karo.")
+    name = PROVIDERS[provider]["key_env"]
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    for i, line in enumerate(lines):
+        if line.strip().startswith(name + "="):
+            lines[i] = f"{name}={key}"
+            break
+    else:
+        lines.append(f"{name}={key}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    os.environ[name] = key
+    for cache_key in [k for k in _model_cache if k[0] == provider]:
+        del _model_cache[cache_key]
+
+
 def api_key(provider):
     return os.environ.get(PROVIDERS[provider]["key_env"], "").strip()
 

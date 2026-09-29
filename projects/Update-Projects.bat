@@ -28,7 +28,7 @@ if not exist "%SRC%" (
 )
 
 echo  Files copy ho rahi hain: %DEST%
-robocopy "%SRC%" "%DEST%" /E /XF .env my_llms.json /NFL /NDL /NJH /NJS /NP >nul
+robocopy "%SRC%" "%DEST%" /E /XF .env my_llms.json my_models.json /NFL /NDL /NJH /NJS /NP >nul
 if %errorlevel% GEQ 8 (
   echo  Copy fail hua. Agar project chal raha hai toh use band karke dobara try karo.
   pause

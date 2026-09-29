@@ -15,6 +15,9 @@ Localhost web app jisme aap:
 Koi `pip install` / `npm install` nahi chahiye, sab built-in hai.
 
 ## 2. NVIDIA API key daalo
+**Aasaan tareeka:** app kholo aur side mein **🔑 API key daalo** pe click karke key paste karo. App use khud `.env` mein save kar dega.
+
+**Ya haath se:**
 1. https://build.nvidia.com pe login karo, koi bhi model kholo, phir **Get API Key** dabao (`nvapi-...`)
 2. Is folder ki **`.env`** file Notepad mein kholo aur key likho:
    ```
@@ -33,6 +36,12 @@ Windows pe `start.bat` pe double-click karke bhi chala sakte ho, ya `python serv
 
 ## Har model ki alag file (`models/` folder)
 `models/` folder mein har NVIDIA model ki apni file hai, jaise `deepseek-v4.1-flash.py` (text + image). Isse terminal se seedha ek model chala sakte ho. Tareeka `models/README.md` mein likha hai. Iske liye ek baar `pip install -r requirements.txt` chalana hoga.
+
+## NVIDIA site se naya model jodna
+1. App mein **🌐 NVIDIA website kholo** dabao, login karke koi free model kholo
+2. Uske code mein `model="..."` wala naam copy karo (jaise `deepseek-ai/deepseek-v4.1-flash`)
+3. App mein **+ Model add karo** dabao, naam paste karo, phir **Add** dabao
+4. Model chat ke dropdown mein **⭐ Mere models** ke neeche aa jayega
 
 ## Apni LLM kaise banaye
 1. **+ Nayi LLM banao** pe click karo

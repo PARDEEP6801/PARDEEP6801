@@ -21,6 +21,8 @@ import providers
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
 ASSISTANTS_FILE = ROOT / "my_llms.json"
+MY_MODELS_FILE = ROOT / "my_models.json"
+MODEL_ID = re.compile(r"^[A-Za-z0-9._:/-]{3,200}$")
 
 _lock = threading.Lock()
 
@@ -66,6 +68,19 @@ def save_llms(items):
     tmp = ASSISTANTS_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(items, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(ASSISTANTS_FILE)
+
+
+def load_my_models():
+    """Model ids the user added by hand, per provider: {"nvidia": [...], ...}."""
+    if not MY_MODELS_FILE.exists():
+        return {}
+    return json.loads(MY_MODELS_FILE.read_text(encoding="utf-8"))
+
+
+def save_my_models(data):
+    tmp = MY_MODELS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    tmp.replace(MY_MODELS_FILE)
 
 
 def clean_llm(data):
@@ -136,15 +151,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json(providers.status())
         elif self.route == "/api/models":
             q = self._query()
+            provider = q.get("provider", "nvidia")
+            with _lock:
+                mine = load_my_models().get(provider, [])
+            mine_models = [{"id": m, "mine": True, "favorite": False} for m in mine]
             try:
                 models = providers.list_models(
-                    q.get("provider", "nvidia"),
+                    provider,
                     free_only=q.get("free", "1") == "1",
                     chat_only=q.get("all", "0") != "1",
                 )
-                self._json({"models": models})
+                self._json({"models": mine_models + [m for m in models if m["id"] not in mine]})
             except providers.ProviderError as e:
-                self._error(str(e), HTTPStatus.BAD_GATEWAY)
+                if mine_models:  # the user's own models still work without the list
+                    self._json({"models": mine_models, "warning": str(e)})
+                else:
+                    self._error(str(e), HTTPStatus.BAD_GATEWAY)
         elif self.route == "/api/llms":
             with _lock:
                 self._json({"llms": load_llms()})
@@ -168,6 +190,27 @@ class Handler(BaseHTTPRequestHandler):
             self._json(llm)
         elif self.route == "/api/chat":
             self._chat(data)
+        elif self.route == "/api/key":
+            try:
+                providers.set_key(str(data.get("provider", "nvidia")), str(data.get("key", "")))
+            except providers.ProviderError as e:
+                return self._error(str(e))
+            self._json(providers.status())
+        elif self.route == "/api/mymodels":
+            provider = str(data.get("provider", "nvidia"))
+            model = str(data.get("id", "")).strip()
+            if provider not in providers.PROVIDERS:
+                return self._error("unknown provider")
+            if not MODEL_ID.match(model):
+                return self._error("Model ID sahi nahi hai. Aisa hona chahiye: deepseek-ai/deepseek-v4.1-flash")
+            with _lock:
+                data_all = load_my_models()
+                items = [m for m in data_all.get(provider, []) if m != model]
+                if not data.get("remove"):
+                    items.insert(0, model)
+                data_all[provider] = items
+                save_my_models(data_all)
+            self._json({"models": items})
         else:
             self._error("not found", HTTPStatus.NOT_FOUND)
 
