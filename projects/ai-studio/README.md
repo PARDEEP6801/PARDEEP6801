@@ -31,6 +31,9 @@ Browser apne aap **http://localhost:8000** khol dega. Band karne ke liye termina
 
 Windows pe `start.bat` pe double-click karke bhi chala sakte ho, ya `python server.py` se.
 
+## Har model ki alag file (`models/` folder)
+`models/` folder mein har NVIDIA model ki apni file hai, jaise `deepseek-v4.1-flash.py` (text + image). Isse terminal se seedha ek model chala sakte ho. Tareeka `models/README.md` mein likha hai. Iske liye ek baar `pip install -r requirements.txt` chalana hoga.
+
 ## Apni LLM kaise banaye
 1. **+ Nayi LLM banao** pe click karo
 2. Naam do, e.g. "Pardeep GPT"

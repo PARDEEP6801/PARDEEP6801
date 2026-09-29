@@ -20,6 +20,7 @@ PROVIDERS = {
         "key_url": "https://build.nvidia.com",
         # Shown first in the dropdown; the live list from the API is added after.
         "favorites": [
+            "deepseek-ai/deepseek-v4.1-flash",
             "meta/llama-3.3-70b-instruct",
             "meta/llama-3.1-405b-instruct",
             "meta/llama-3.1-8b-instruct",
